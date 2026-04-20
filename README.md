@@ -20,17 +20,286 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## App Structure
+- App: page content
+- components: components collection
+- config: config from env
+- externals: api call
+- helpers: reusable function collection
+- plugins: third party script
+- stores: zustand/state management
 
-To learn more about Next.js, take a look at the following resources:
+## Create Page Checklist
+- [ ] Add page metadata for SEO like title and meta description ([Guide](#add-page-metadata-for-seo))
+- [ ] Add route translation to i18n config ([Guide](#add-route-translation))
+- [ ] Page must not include `'use client'`. If needed, make a wrapper and make the component use client and not the page ([Guide](#how-to-use-server-component-or-client-component))
+- [ ] Use i18n translation feature to translate text ([Guide](#use-next-intl-to-translate-text))
+- [ ] (Optional) Add Amplitude page tracker ([Guide](#add-amplitude-page-tracker))
+- [ ] (Optional) Add custom page header ([Guide](#add-custom-page-header))
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Optimizing Page Checklist
+- [ ] Use server component by default ([Guide](#how-to-use-server-component-or-client-component))
+- [ ] Do not props drilling. Max 2 level deep
+- [ ] Optimize image ([Guide](#optimizing-image))
+- [ ] Proper structure HTML tag (`<h1>`, `<h2>`, `<p>`) ([Guide](#proper-structure-html))
+- [ ] Use dynamic import for below the fold ([Guide](#use-dynamic-import))
+- [ ] Use cache when fetching data if possible ([Guide](#caching))
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Guides
+### Add Page Metadata for SEO
+At the page file, add this on top of page. For example `/app/[locale]/game-key/page.tsx`:
 
-## Deploy on Vercel
+```typescript
+export async function generateMetadata(): Promise<Metadata> {
+  return metadataGenerator(
+    'Buy Game Keys Steam For PC Cheapest Price',
+    'Buy cheap game keys Steam for PC with instant delivery 24/7 to a vast selection of games at cheapest prices. Elevate your gaming experience today.'
+  );
+}
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+If you need to change OG image, you can add the image URL as third parameter:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```typescript
+export async function generateMetadata(): Promise<Metadata> {
+  return metadataGenerator(
+    'Buy Game Keys Steam For PC Cheapest Price',
+    'Buy cheap game keys Steam for PC with instant delivery 24/7 to a vast selection of games at cheapest prices. Elevate your gaming experience today.',
+    'https://files.itemku.com/image/og-image.png'
+  );
+}
+```
+
+### Add Route Translation
+Some routes have different names when in English. For example `/dagangan` will be `/product`.
+You can register the translation at `/i18n/routing.ts` on pathnames. For now we only need `en`:
+
+```typescript
+export const routing = defineRouting({
+    locales: ['en', 'id'],
+    localePrefix: 'as-needed',
+    defaultLocale: 'id',
+    localeDetection: false,
+    pathnames: {
+        '/': '/',
+        '/pusat-bantuan': {
+            en: '/help-center',
+        },
+        '/pusat-bantuan/tanya-jawab': {
+            en: '/help-center/discussion',
+        },
+    },
+});
+```
+
+For dynamic routes, use `/[dynamic_value]` same name as folder structure. For example:
+
+```typescript
+'/dagangan/[seo_string]/[product_id]': {
+    en: '/product/[seo_string]/[product_id]',
+},
+```
+
+### How to Use Server Component or Client Component
+By default, a component will be a server component. To change it to a client component, simply add `'use client'` on top of the file.
+
+**Server component limitations:**
+- Can't use React hooks (`useEffect`, `useState`, etc.)
+- Can't use HTML events (`onClick`, `onInput`, etc.)
+
+**Client component limitations:**
+- Can't fetch data inside the component
+- Can't have server component inside client component. Server component can't be a child of client component
+
+For workaround, you can wrap server component with child component. For example:
+
+```tsx
+<ClientComponent>
+  <ServerComponent />
+</ClientComponent>
+```
+
+### Use next-intl to Translate Text
+To translate text, there are two ways:
+
+**Client Component:**
+```typescript
+import { useTranslations } from 'next-intl';
+
+const t = useTranslations();
+t('lupa_password')
+```
+
+**Server Component:**
+```typescript
+import { getTranslations } from 'next-intl/server';
+
+const t = await getTranslations();
+t('lupa_password')
+```
+
+### Add Amplitude Page Tracker
+If you need a tracker on page visit, you can add the component:
+
+1. **Import the component:**
+```typescript
+import VisitPageTracker from 'components/features/amplitude/visit-page-tracker';
+```
+
+2. **Place the component inside the page:**
+```tsx
+<VisitPageTracker eventName={EVENT.VISIT_GAME_KEY_MICROSITE_PAGE} />
+```
+
+3. **If it's a new event, make sure to register the event name first at:**
+```typescript
+import { EVENT } from 'helpers/amplitude-helper';
+```
+
+### Add Custom Page Header
+
+If the page needs a custom header (different version of home page header), add the PageHeader like this. This is a header with back button. If you need a different type, create a new header and replace it with your new header:
+
+```tsx
+export default async function GameKeyPage() {
+  const t = await getTranslations();
+  return (
+    <div>
+      <PageHeader
+        title={t('beli_game_key_dengan_harga_terbaik')}
+        backgroundColorBeforeScroll='bg-gradient-to-b from-[#1B1B1B] to-transparent'
+        textColorBeforeScroll='text-white'
+        iconColorBeforeScroll='white'
+      />
+      <GameKeyContent />
+    </div>
+  );
+}
+```
+
+Since this is adding a header to a page, you need to hide the default header by whitelisting the page. Otherwise, it will have 2 stacks of headers. The config is located at `components/shared/layout/header/index.tsx`:
+
+```typescript
+const hideMobileHeaderFor: any = ['/game-key', '/']; // TEMPORARY INCLUDE HOME PAGE
+const hideDesktopHeaderFor: any = [];
+```
+
+### Optimizing Image
+
+When creating a new image:
+
+1. **Use FJImage component** - Import `FJImage` from `'components/shared/image'`. It includes `next/image` and optimization from server. Do not use HTML `<img>` if possible.
+
+2. **Use priority for LCP** - Use Lighthouse to detect which image is the LCP and add `priority` to its property. This will instruct the server to serve the image first and as soon as possible to reduce LCP time:
+
+```tsx
+<FJImage
+  src={IMAGE_BRAND.ITEMKU_LOGO_WHITE_MINI}
+  alt='logo-itemku'
+  width={32}
+  height={32}
+  priority
+/>
+```
+
+3. **Define the size** - By defining the size, the image optimization will automatically use smaller image dimensions and compress the size:
+
+```tsx
+<FJImage
+  src={sellerBadge?.badge_image}
+  width={24}
+  height={24}
+/>
+```
+
+4. **For filled image or responsive size** - Use `sizes` to select the smallest image. The value may vary and you might need to change and find the sweet spot. Too low will cause the image to be blurry and too high will have large size and slower load time:
+
+```tsx
+<FJImage
+  src={backgroundImage}
+  alt='Background'
+  fill
+  style={{
+    objectFit: 'cover',
+    objectPosition: 'top',
+  }}
+  sizes='20vw'
+/>
+```
+
+### Proper Structure HTML
+
+The page should follow proper structural markup to improve SEO. Utilize HTML tags like `h1`, `h2`, `p`, etc. One page should have at least one `h1` tag as the main title. For example:
+
+```tsx
+<h1 className='font-bold text-3xl sm:text-5xl'>
+  {t('buka_petualangan_baru_dengan_game_key_harga_terbaik')}
+</h1>
+<h2 className='font-normal text-lg sm:text-xl text-charcoal'>
+  {t(
+    'temukan_game_hebat_yang_lebih_murah_dan_bisa_dikirimkan_kepada_kamu_dalam_sekejap_game_bagus_penawaran_bagus'
+  )}
+</h2>
+```
+
+### Use Dynamic Import
+
+To reduce load time, content below the fold should be loaded on demand. One method to do that is using dynamic import. If the component is a client component, make sure to use `{ ssr: false }` so the component only loads after the initial server load:
+
+```typescript
+const FindGameSectionMobile = dynamic(
+  () =>
+    import('components/features/game-key/sections/find-game-section/mobile'),
+  { ssr: false }
+);
+```
+
+### Caching
+
+To minimize requests to the gateway, some data should be cached. There are 2 ways to cache in the new web:
+
+#### Client Side
+
+On the client side, you can't use Redis, so the alternative is `sessionStorage`.
+
+1. **Import the helper function:**
+```typescript
+import { retrieveFromSessionStorage } from 'helpers/storage-helper';
+```
+
+2. **Generate cache key with `generateCacheKeyFromObject` function.**
+
+3. **Wrap the fetch function and decide how long the cache lasts:**
+
+```typescript
+export async function fetchSellerBadge(userId: number, token: string) {
+    return await retrieveFromSessionStorage('sellerBadgeData_' + userId, async () => {
+        const response = await AxiosHelper.getWithParams(`${getGatewayUrl()}${endpoint}`, { seller_id: userId }, {
+            accessToken: token
+        });
+        return response?.data?.current_tier;
+    }, DURATION.IN_SECOND_1_MINUTES);
+}
+```
+
+#### Server Side
+On the server side, the cache will be using Redis.
+
+1. **Import the helper function:**
+```typescript
+import { retrieveCache } from 'helpers/cache-helper';
+```
+
+2. **Generate cache key with `generateCacheKeyFromObject` function.**
+
+3. **Wrap the fetch function and decide how long the cache lasts:**
+
+```typescript
+export async function fetchPaymentMethodIcon() {
+    return await retrieveCache(generateCacheKeyFromObject('paymentMethodIcon'), async () => {
+        const response = await AxiosHelper.getWithParams(`${getGatewayUrl()}${endpoint}`, {});
+        return response;
+    }, DURATION.IN_SECOND_30_MINUTES);
+}
+``` 
+
