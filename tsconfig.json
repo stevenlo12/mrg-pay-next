@@ -20,15 +20,17 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@app/*": ["./app/*"],
-      "@components/*": ["./components/*"],
-      "@config/*": ["config/*"],
-      "@externals/*": ["externals/*"],
-      "@helpers/*": ["./app/helpers/*"],
-      "@plugins/*": ["./app/plugins/*"],
-      "@stores/*": ["stores/*"],
-      "@public/*": ["./public/*"]
+      "@/*": ["./src/*"],
+      "@app/*": ["./src/app/*"],
+      "@components/*": ["./src/components/*"],
+      "@config/*": ["./src/config/*"],
+      "@externals/*": ["./src/externals/*"],
+      "@helpers/*": ["./src/app/helpers/*"],
+      "@plugins/*": ["./src/app/plugins/*"],
+      "@stores/*": ["./src/stores/*"],
+      "@public/*": ["./public/*"],
+      "@messages/*": ["./messages/*"],
+      "@i18n/*": ["./src/i18n/*"]
     }
   },
   "include": [
